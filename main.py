@@ -10,16 +10,7 @@ DOWNLOAD_DIR = "downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 # -------------------------------------------------
-# Write Instagram cookies from Railway ENV (if any)
-# -------------------------------------------------
-COOKIE_PATH = "/tmp/instagram_cookies.txt"
-
-if "IG_COOKIES" in os.environ:
-    with open(COOKIE_PATH, "w", encoding="utf-8") as f:
-        f.write(os.environ["IG_COOKIES"])
-
-# -------------------------------------------------
-# SAFE MEDIA EXTRACTOR
+# SAFE MEDIA EXTRACTOR (ALL PLATFORMS)
 # -------------------------------------------------
 def extract_all(entry):
     video_url = None
@@ -28,7 +19,7 @@ def extract_all(entry):
 
     formats = entry.get("formats", [])
 
-    # IMAGE POSTS (Instagram images)
+    # IMAGE POSTS (Instagram image-only posts)
     if not formats:
         image_url = (
             entry.get("display_url")
@@ -38,7 +29,7 @@ def extract_all(entry):
         return video_url, audio_url, image_url
 
     for f in formats:
-        # VIDEO (video+audio)
+        # VIDEO (video + audio)
         if (
             f.get("vcodec") != "none"
             and f.get("acodec") != "none"
@@ -56,14 +47,15 @@ def extract_all(entry):
 
     return video_url, audio_url, image_url
 
+
 # -------------------------------------------------
 # API ENDPOINT
 # -------------------------------------------------
 @app.get("/api/download")
 async def download_api(
     url: str = Query(..., description="Any supported media URL"),
-    playlist: bool = Query(False),
-    zip: bool = Query(False),
+    playlist: bool = Query(False, description="true for playlist"),
+    zip: bool = Query(False, description="true to download playlist as ZIP"),
 ):
     request_id = str(uuid.uuid4())
     output_path = os.path.join(DOWNLOAD_DIR, request_id)
@@ -74,15 +66,16 @@ async def download_api(
         "skip_download": not zip,
         "outtmpl": f"{output_path}/%(title)s.%(ext)s",
 
-        # 🔑 REQUIRED FOR YOUTUBE & MOST PLATFORMS
+        # REQUIRED FOR YOUTUBE + MOST PLATFORMS
         "format": "bestvideo+bestaudio/best",
         "merge_output_format": "mp4",
         "noplaylist": False,
-    }
 
-    # Use Instagram cookies if present
-    if os.path.exists(COOKIE_PATH):
-        ydl_opts["cookiefile"] = COOKIE_PATH
+        # HUMAN-LIKE SPEED (NO COOKIES / NO PROXY)
+        "sleep_interval": 3,
+        "max_sleep_interval": 6,
+        "concurrent_fragment_downloads": 1,
+    }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -105,7 +98,7 @@ async def download_api(
                     z.write(os.path.join(root, f), f)
         zip_file = zip_path
 
-    # ---------------- MULTI MEDIA -------------------
+    # ---------------- MULTI MEDIA (CAROUSEL / PLAYLIST) ----------------
     items = None
     if isinstance(info.get("entries"), list):
         items = []
@@ -130,10 +123,14 @@ async def download_api(
         "thumbnail": info.get("thumbnail"),
         "duration": info.get("duration"),
 
+        # SINGLE
         "video_url": video_url,
         "audio_url": audio_url,
         "image_url": image_url,
 
+        # MULTI
         "items": items,
+
+        # ZIP
         "zip_file": zip_file,
     }
