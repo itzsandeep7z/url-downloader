@@ -18,7 +18,6 @@ if "IG_COOKIES" in os.environ:
     with open(COOKIE_PATH, "w", encoding="utf-8") as f:
         f.write(os.environ["IG_COOKIES"])
 
-
 # -------------------------------------------------
 # SAFE MEDIA EXTRACTOR
 # -------------------------------------------------
@@ -27,19 +26,19 @@ def extract_all(entry):
     audio_url = None
     image_url = None
 
-    formats = entry.get("formats")
+    formats = entry.get("formats", [])
 
-    # IMAGE POSTS / NO FORMATS
+    # IMAGE POSTS (Instagram images)
     if not formats:
         image_url = (
             entry.get("display_url")
-            or entry.get("url")
             or entry.get("thumbnail")
+            or entry.get("url")
         )
         return video_url, audio_url, image_url
 
-    # VIDEO + AUDIO
     for f in formats:
+        # VIDEO (video+audio)
         if (
             f.get("vcodec") != "none"
             and f.get("acodec") != "none"
@@ -47,6 +46,7 @@ def extract_all(entry):
         ):
             video_url = f.get("url")
 
+        # AUDIO ONLY
         elif (
             f.get("vcodec") == "none"
             and f.get("acodec") != "none"
@@ -54,16 +54,7 @@ def extract_all(entry):
         ):
             audio_url = f.get("url")
 
-    # IMAGE FALLBACK
-    if not video_url and not audio_url:
-        image_url = (
-            entry.get("display_url")
-            or entry.get("thumbnail")
-            or entry.get("url")
-        )
-
     return video_url, audio_url, image_url
-
 
 # -------------------------------------------------
 # API ENDPOINT
@@ -71,8 +62,8 @@ def extract_all(entry):
 @app.get("/api/download")
 async def download_api(
     url: str = Query(..., description="Any supported media URL"),
-    playlist: bool = Query(False, description="true for playlist"),
-    zip: bool = Query(False, description="true to download playlist as ZIP"),
+    playlist: bool = Query(False),
+    zip: bool = Query(False),
 ):
     request_id = str(uuid.uuid4())
     output_path = os.path.join(DOWNLOAD_DIR, request_id)
@@ -82,21 +73,26 @@ async def download_api(
         "quiet": True,
         "skip_download": not zip,
         "outtmpl": f"{output_path}/%(title)s.%(ext)s",
+
+        # 🔑 REQUIRED FOR YOUTUBE & MOST PLATFORMS
+        "format": "bestvideo+bestaudio/best",
+        "merge_output_format": "mp4",
+        "noplaylist": False,
     }
 
-    # Always use cookies if available (Instagram stability)
+    # Use Instagram cookies if present
     if os.path.exists(COOKIE_PATH):
         ydl_opts["cookiefile"] = COOKIE_PATH
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
+            info = ydl.extract_info(url, download=zip)
 
-    except Exception:
+    except Exception as e:
         return {
             "status": "error",
             "developer": "@xoxhunterxd",
-            "message": "Unable to extract media from this URL",
+            "message": str(e),
         }
 
     # ---------------- ZIP (PLAYLIST) ----------------
@@ -109,7 +105,7 @@ async def download_api(
                     z.write(os.path.join(root, f), f)
         zip_file = zip_path
 
-    # ---------------- MULTIPLE MEDIA (CAROUSEL) -----
+    # ---------------- MULTI MEDIA -------------------
     items = None
     if isinstance(info.get("entries"), list):
         items = []
@@ -130,21 +126,14 @@ async def download_api(
         "status": "success",
         "developer": "@xoxhunterxd",
         "platform": info.get("extractor_key"),
+        "title": info.get("title"),
+        "thumbnail": info.get("thumbnail"),
+        "duration": info.get("duration"),
 
-        # SINGLE
         "video_url": video_url,
         "audio_url": audio_url,
         "image_url": image_url,
 
-        # MULTI
         "items": items,
-
-        # ZIP
         "zip_file": zip_file,
-
-        # META
-        "title": info.get("title"),
-        "thumbnail": info.get("thumbnail"),
-        "duration": info.get("duration"),
     }
-# -------------------------------------------------
