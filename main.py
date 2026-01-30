@@ -3,6 +3,8 @@ import yt_dlp
 import os
 import uuid
 import zipfile
+import time
+import shutil
 
 app = FastAPI(title="Universal Downloader API")
 
@@ -10,7 +12,52 @@ DOWNLOAD_DIR = "downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 # -------------------------------------------------
-# SAFE MEDIA EXTRACTOR (ALL PLATFORMS)
+# PLATFORM DETECTION (UX)
+# -------------------------------------------------
+def detect_platform(url: str):
+    u = url.lower()
+
+    if "youtube.com" in u or "youtu.be" in u:
+        return "youtube"
+    if "instagram.com" in u:
+        return "instagram"
+    if "tiktok.com" in u:
+        return "tiktok"
+    if "facebook.com" in u or "fb.watch" in u:
+        return "facebook"
+    if "twitter.com" in u or "x.com" in u:
+        return "twitter"
+    if "soundcloud.com" in u:
+        return "soundcloud"
+
+    return "unknown"
+
+
+# -------------------------------------------------
+# AUTO FILE CLEANUP (FLY.IO SAFE)
+# -------------------------------------------------
+def cleanup_old_downloads(base_dir, max_age_seconds=3600):
+    """
+    Deletes download folders older than 1 hour
+    Prevents disk from filling on Fly.io
+    """
+    now = time.time()
+
+    for folder in os.listdir(base_dir):
+        path = os.path.join(base_dir, folder)
+
+        if not os.path.isdir(path):
+            continue
+
+        try:
+            if now - os.path.getmtime(path) > max_age_seconds:
+                shutil.rmtree(path, ignore_errors=True)
+        except Exception:
+            pass
+
+
+# -------------------------------------------------
+# SAFE MEDIA EXTRACTOR
 # -------------------------------------------------
 def extract_all(entry):
     video_url = None
@@ -19,7 +66,7 @@ def extract_all(entry):
 
     formats = entry.get("formats", [])
 
-    # IMAGE POSTS (Instagram image-only posts)
+    # IMAGE POSTS (Instagram images)
     if not formats:
         image_url = (
             entry.get("display_url")
@@ -49,6 +96,18 @@ def extract_all(entry):
 
 
 # -------------------------------------------------
+# HEALTH CHECK (IMPORTANT)
+# -------------------------------------------------
+@app.get("/")
+def health():
+    return {
+        "status": "ok",
+        "service": "Universal Downloader API",
+        "developer": "@xoxhunterxd"
+    }
+
+
+# -------------------------------------------------
 # API ENDPOINT
 # -------------------------------------------------
 @app.get("/api/download")
@@ -57,6 +116,9 @@ async def download_api(
     playlist: bool = Query(False, description="true for playlist"),
     zip: bool = Query(False, description="true to download playlist as ZIP"),
 ):
+    # Cleanup old files first (safe)
+    cleanup_old_downloads(DOWNLOAD_DIR)
+
     request_id = str(uuid.uuid4())
     output_path = os.path.join(DOWNLOAD_DIR, request_id)
     os.makedirs(output_path, exist_ok=True)
@@ -66,12 +128,12 @@ async def download_api(
         "skip_download": not zip,
         "outtmpl": f"{output_path}/%(title)s.%(ext)s",
 
-        # REQUIRED FOR YOUTUBE + MOST PLATFORMS
+        # REQUIRED FOR YOUTUBE & MOST PLATFORMS
         "format": "bestvideo+bestaudio/best",
         "merge_output_format": "mp4",
         "noplaylist": False,
 
-        # HUMAN-LIKE SPEED (NO COOKIES / NO PROXY)
+        # HUMAN-LIKE SPEED (NO PROXY / NO COOKIES)
         "sleep_interval": 3,
         "max_sleep_interval": 6,
         "concurrent_fragment_downloads": 1,
@@ -85,6 +147,7 @@ async def download_api(
         return {
             "status": "error",
             "developer": "@xoxhunterxd",
+            "detected_platform": detect_platform(url),
             "message": str(e),
         }
 
@@ -118,6 +181,7 @@ async def download_api(
     return {
         "status": "success",
         "developer": "@xoxhunterxd",
+        "detected_platform": detect_platform(url),
         "platform": info.get("extractor_key"),
         "title": info.get("title"),
         "thumbnail": info.get("thumbnail"),
@@ -133,4 +197,4 @@ async def download_api(
 
         # ZIP
         "zip_file": zip_file,
-    }
+            }
