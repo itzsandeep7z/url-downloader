@@ -4,6 +4,7 @@ import uuid
 import shutil
 import threading
 import time
+import zipfile
 
 BASE_DIR = "downloads"
 
@@ -26,16 +27,13 @@ def download_media(url: str, base_url: str):
         "quiet": True,
         "noplaylist": True,
 
-        # ✅ ALWAYS DOWNLOAD A SINGLE MP4 (WORKS FOR IG/YT/X/FB)
+        # ✅ ONE MP4 (WORKS EVERYWHERE)
         "format": "best[ext=mp4]/best",
 
-        # ✅ KEEP VIDEO FILE
         "keepvideo": True,
-
-        # ✅ WRITE IMAGE
         "writethumbnail": True,
 
-        # ✅ EXTRACT MP3 *FROM MP4* (VIDEO WILL NOT BE DELETED)
+        # ✅ MP3 FROM MP4
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
@@ -48,9 +46,15 @@ def download_media(url: str, base_url: str):
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
 
-    files = []
-    for f in os.listdir(output_dir):
-        files.append(f"{base_url}/api/download/file/{uid}/{f}")
+    files = os.listdir(output_dir)
+
+    # 🔥 CREATE ZIP ALWAYS
+    zip_name = "all.zip"
+    zip_path = os.path.join(output_dir, zip_name)
+
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for f in files:
+            zipf.write(os.path.join(output_dir, f), f)
 
     auto_cleanup(output_dir)
 
@@ -58,6 +62,10 @@ def download_media(url: str, base_url: str):
         "status": "success",
         "title": info.get("title"),
         "platform": info.get("extractor"),
-        "files": files,
+        "files": [
+            f"{base_url}/api/download/file/{uid}/{f}"
+            for f in files
+        ],
+        "zip": f"{base_url}/api/download/file/{uid}/{zip_name}",
         "dev": "@xoxhunterxd"
     }
