@@ -26,14 +26,16 @@ def download_media(url: str, base_url: str):
         "quiet": True,
         "noplaylist": True,
 
-        # 🎯 FORCE MP4 VIDEO (WORKS FOR IG / YT / X / FB)
-        "format": "bestvideo[ext=mp4]+bestaudio/best/best",
-        "merge_output_format": "mp4",
+        # ✅ ALWAYS DOWNLOAD A SINGLE MP4 (WORKS FOR IG/YT/X/FB)
+        "format": "best[ext=mp4]/best",
 
-        # 🔥 KEEP VIDEO AFTER AUDIO EXTRACTION
+        # ✅ KEEP VIDEO FILE
         "keepvideo": True,
 
-        # 🎧 AUDIO → MP3
+        # ✅ WRITE IMAGE
+        "writethumbnail": True,
+
+        # ✅ EXTRACT MP3 *FROM MP4* (VIDEO WILL NOT BE DELETED)
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
@@ -41,9 +43,6 @@ def download_media(url: str, base_url: str):
                 "preferredquality": "192",
             }
         ],
-
-        # 🖼️ THUMBNAIL / IMAGE
-        "writethumbnail": True,
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -60,5 +59,5 @@ def download_media(url: str, base_url: str):
         "title": info.get("title"),
         "platform": info.get("extractor"),
         "files": files,
-        "dev": "@xoxhunterxd",
+        "dev": "@xoxhunterxd"
     }
