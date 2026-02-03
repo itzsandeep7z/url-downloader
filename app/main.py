@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 import os
 
@@ -6,14 +6,16 @@ from app.downloader import download_media
 
 app = FastAPI(
     title="Universal Downloader API",
-    description="Download MP4 / MP3 / Images from any platform",
     version="1.0",
 )
 
+
 @app.get("/api/download")
-def download(url: str):
+def download(url: str, request: Request):
     try:
-        return download_media(url)
+        base_url = str(request.base_url).rstrip("/")
+        result = download_media(url, base_url)
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
