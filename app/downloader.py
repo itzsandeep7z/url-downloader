@@ -1,24 +1,26 @@
-import uuid
+import yt_dlp
 import os
-from yt_dlp import YoutubeDL
+import uuid
+import shutil
 
 BASE_DIR = "downloads"
 
-def download_media(url: str, base_url: str):
+def download_media(url: str):
     uid = str(uuid.uuid4())
-    out_dir = os.path.join(BASE_DIR, uid)
-    os.makedirs(out_dir, exist_ok=True)
+    output_dir = os.path.join(BASE_DIR, uid)
+    os.makedirs(output_dir, exist_ok=True)
 
     ydl_opts = {
-        "outtmpl": f"{out_dir}/%(title)s.%(ext)s",
-        "quiet": True,
+        "outtmpl": f"{output_dir}/%(title)s.%(ext)s",
         "noplaylist": True,
+        "quiet": True,
 
-        # MP4 VIDEO
-        "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]",
+        # 🎯 MP4 video + best audio
+        "format": "bestvideo[ext=mp4]+bestaudio/best",
+
         "merge_output_format": "mp4",
 
-        # MP3 AUDIO
+        # 🎧 Convert audio to MP3
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
@@ -27,20 +29,20 @@ def download_media(url: str, base_url: str):
             }
         ],
 
-        # IMAGE
         "writethumbnail": True,
     }
 
-    with YoutubeDL(ydl_opts) as ydl:
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
 
     files = []
-    for f in os.listdir(out_dir):
-        files.append(f"{base_url}/api/download/file/{uid}/{f}")
+    for f in os.listdir(output_dir):
+        files.append(f"/api/download/file/{uid}/{f}")
 
     return {
         "status": "success",
         "title": info.get("title"),
-        "extractor": info.get("extractor"),
+        "platform": info.get("extractor"),
         "files": files,
+        "dev": "@xoxhunterxd"
     }
