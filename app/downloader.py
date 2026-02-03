@@ -26,9 +26,12 @@ def download_media(url: str, base_url: str):
         "quiet": True,
         "noplaylist": True,
 
-        # 🎯 MP4 VIDEO
-        "format": "bestvideo[ext=mp4]+bestaudio/best",
+        # 🎯 FORCE MP4 VIDEO (WORKS FOR IG / YT / X / FB)
+        "format": "bestvideo[ext=mp4]+bestaudio/best/best",
         "merge_output_format": "mp4",
+
+        # 🔥 KEEP VIDEO AFTER AUDIO EXTRACTION
+        "keepvideo": True,
 
         # 🎧 AUDIO → MP3
         "postprocessors": [
@@ -39,7 +42,7 @@ def download_media(url: str, base_url: str):
             }
         ],
 
-        # 🖼️ THUMB
+        # 🖼️ THUMBNAIL / IMAGE
         "writethumbnail": True,
     }
 
@@ -48,8 +51,7 @@ def download_media(url: str, base_url: str):
 
     files = []
     for f in os.listdir(output_dir):
-        full_link = f"{base_url}/api/download/file/{uid}/{f}"
-        files.append(full_link)
+        files.append(f"{base_url}/api/download/file/{uid}/{f}")
 
     auto_cleanup(output_dir)
 
@@ -58,5 +60,5 @@ def download_media(url: str, base_url: str):
         "title": info.get("title"),
         "platform": info.get("extractor"),
         "files": files,
-        "dev": "@xoxhunterxd"
+        "dev": "@xoxhunterxd",
     }
