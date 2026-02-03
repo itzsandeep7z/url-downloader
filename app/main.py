@@ -1,3 +1,12 @@
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
+
+app = FastAPI(
+    title="HUNTER API",
+    description="Universal Media Downloader",
+    version="1.0.0"
+)
+
 @app.get("/", response_class=HTMLResponse)
 def home():
     return """
@@ -49,11 +58,11 @@ body {
 }
 #introText {
   font-family: 'Great Vibes', cursive;
-  font-size: 44px;
+  font-size: 40px;
   white-space: nowrap;
   overflow: hidden;
   border-right: 2px solid white;
-  animation: typing 4s steps(50), blink .7s infinite;
+  animation: typing 4s steps(60), blink .7s infinite;
 }
 @keyframes typing { from{width:0} to{width:100%} }
 @keyframes blink { 50%{border-color:transparent} }
@@ -92,7 +101,6 @@ canvas {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: gradient 6s ease infinite;
-  text-shadow: 0 0 40px rgba(0,255,225,.3);
 }
 @keyframes gradient {
   0%{background-position:0% 50%}
@@ -178,7 +186,7 @@ canvas {
     </div>
 
     <div class="footer">
-      Developer @xoxhunterxd • MP4 • MP3 • Images
+      Developer @xoxhunterxd • MP4 • MP3 • JPG
     </div>
   </div>
 </div>
@@ -260,4 +268,4 @@ document.addEventListener("mousemove",e=>{
 
 </body>
 </html>
-    """
+"""
