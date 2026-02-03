@@ -1,0 +1,16 @@
+name: url-downloader
+services:
+  - name: api
+    type: web
+    ports:
+      - port: 8000
+        protocol: http
+    routes:
+      - path: /
+    instance_type: nano
+    regions:
+      - fra
+    build:
+      type: docker
+    run:
+      command: ""
