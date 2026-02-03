@@ -8,7 +8,6 @@ import time
 BASE_DIR = "downloads"
 
 
-# 🔥 AUTO CLEANUP FUNCTION
 def auto_cleanup(path, delay=600):
     def clean():
         time.sleep(delay)
@@ -17,7 +16,7 @@ def auto_cleanup(path, delay=600):
     threading.Thread(target=clean, daemon=True).start()
 
 
-def download_media(url: str):
+def download_media(url: str, base_url: str):
     uid = str(uuid.uuid4())
     output_dir = os.path.join(BASE_DIR, uid)
     os.makedirs(output_dir, exist_ok=True)
@@ -27,7 +26,7 @@ def download_media(url: str):
         "quiet": True,
         "noplaylist": True,
 
-        # 🎯 FORCE MP4 VIDEO
+        # 🎯 MP4 VIDEO
         "format": "bestvideo[ext=mp4]+bestaudio/best",
         "merge_output_format": "mp4",
 
@@ -40,7 +39,7 @@ def download_media(url: str):
             }
         ],
 
-        # 🖼️ THUMB / IMAGE
+        # 🖼️ THUMB
         "writethumbnail": True,
     }
 
@@ -49,9 +48,9 @@ def download_media(url: str):
 
     files = []
     for f in os.listdir(output_dir):
-        files.append(f"/api/download/file/{uid}/{f}")
+        full_link = f"{base_url}/api/download/file/{uid}/{f}"
+        files.append(full_link)
 
-    # 🧹 AUTO DELETE AFTER 10 MIN
     auto_cleanup(output_dir)
 
     return {
