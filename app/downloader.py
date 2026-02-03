@@ -2,8 +2,20 @@ import yt_dlp
 import os
 import uuid
 import shutil
+import threading
+import time
 
 BASE_DIR = "downloads"
+
+
+# 🔥 AUTO CLEANUP FUNCTION
+def auto_cleanup(path, delay=600):
+    def clean():
+        time.sleep(delay)
+        if os.path.exists(path):
+            shutil.rmtree(path, ignore_errors=True)
+    threading.Thread(target=clean, daemon=True).start()
+
 
 def download_media(url: str):
     uid = str(uuid.uuid4())
@@ -12,15 +24,14 @@ def download_media(url: str):
 
     ydl_opts = {
         "outtmpl": f"{output_dir}/%(title)s.%(ext)s",
-        "noplaylist": True,
         "quiet": True,
+        "noplaylist": True,
 
-        # 🎯 MP4 video + best audio
+        # 🎯 FORCE MP4 VIDEO
         "format": "bestvideo[ext=mp4]+bestaudio/best",
-
         "merge_output_format": "mp4",
 
-        # 🎧 Convert audio to MP3
+        # 🎧 AUDIO → MP3
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
@@ -29,6 +40,7 @@ def download_media(url: str):
             }
         ],
 
+        # 🖼️ THUMB / IMAGE
         "writethumbnail": True,
     }
 
@@ -38,6 +50,9 @@ def download_media(url: str):
     files = []
     for f in os.listdir(output_dir):
         files.append(f"/api/download/file/{uid}/{f}")
+
+    # 🧹 AUTO DELETE AFTER 10 MIN
+    auto_cleanup(output_dir)
 
     return {
         "status": "success",
