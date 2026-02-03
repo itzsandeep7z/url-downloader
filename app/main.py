@@ -9,8 +9,7 @@ app = FastAPI(
     version="1.0"
 )
 
-
-# ✅ HOME PAGE
+# ================= HOME PAGE =================
 @app.get("/", response_class=HTMLResponse)
 def home():
     return """
@@ -59,8 +58,7 @@ def home():
     </html>
     """
 
-
-# ✅ DOWNLOAD API (SMART RESPONSE)
+# ================= DOWNLOAD API =================
 @app.get("/api/download")
 def download(url: str, request: Request):
     base_url = str(request.base_url).rstrip("/")
@@ -70,38 +68,42 @@ def download(url: str, request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    # 🔥 IF BROWSER → RETURN STYLED HTML
-    accept = request.headers.get("accept", "")
-    if "text/html" in accept:
+    # Browser → HTML
+    if "text/html" in request.headers.get("accept", ""):
         return HTMLResponse(render_html_result(data))
 
-    # 🔥 OTHERWISE → PURE JSON
+    # API → JSON
     return JSONResponse(data)
 
-
-# ✅ FILE SERVING
+# ================= FILE SERVING =================
 @app.get("/api/download/file/{uid}/{filename}")
 def get_file(uid: str, filename: str):
     path = os.path.join("downloads", uid, filename)
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(path, filename=filename)
 
+    return FileResponse(
+        path,
+        filename=filename,
+        media_type="application/octet-stream"
+    )
 
-# 🎨 HTML RENDER FUNCTION
+# ================= HTML RESULT PAGE =================
 def render_html_result(data: dict) -> str:
     buttons = ""
+
     for f in data["files"]:
-        label = "Download"
         if f.endswith(".mp4"):
-            label = "⬇ MP4 Video"
+            label = "⬇ Download MP4"
         elif f.endswith(".mp3"):
-            label = "⬇ MP3 Audio"
+            label = "⬇ Download MP3"
         elif f.endswith(".jpg") or f.endswith(".png"):
-            label = "⬇ Image"
+            label = "⬇ Download Image"
+        else:
+            label = "⬇ Download"
 
         buttons += f"""
-        <a href="{f}" target="_blank">{label}</a>
+        <button onclick="startDownload('{f}')">{label}</button>
         """
 
     return f"""
@@ -113,11 +115,12 @@ def render_html_result(data: dict) -> str:
             body {{
                 background: #0f0f0f;
                 color: white;
-                font-family: Arial, sans-serif;
+                font-family: 'Segoe UI', sans-serif;
                 display: flex;
                 justify-content: center;
                 align-items: center;
                 height: 100vh;
+                overflow: hidden;
             }}
             .card {{
                 background: #1a1a1a;
@@ -125,32 +128,49 @@ def render_html_result(data: dict) -> str:
                 border-radius: 14px;
                 text-align: center;
                 width: 420px;
-                box-shadow: 0 0 40px rgba(0,0,0,.5);
+                box-shadow: 0 0 40px rgba(0,0,0,.6);
+                z-index: 10;
             }}
             h2 {{
-                margin-bottom: 10px;
+                margin-bottom: 8px;
             }}
             .platform {{
                 opacity: .7;
                 margin-bottom: 25px;
             }}
-            a {{
-                display: block;
-                margin: 12px 0;
-                padding: 12px;
-                background: linear-gradient(90deg, #00ffe1, #00aaff);
-                color: black;
-                font-weight: bold;
+            button {{
+                width: 100%;
+                margin: 10px 0;
+                padding: 14px;
                 border-radius: 8px;
-                text-decoration: none;
+                border: none;
+                cursor: pointer;
+                font-size: 16px;
+                font-weight: bold;
+                background: linear-gradient(90deg, #00ffe1, #00aaff);
+                color: #000;
             }}
-            a:hover {{
+            button:hover {{
                 opacity: .85;
             }}
             .dev {{
                 margin-top: 25px;
                 font-size: 14px;
                 opacity: .6;
+            }}
+
+            /* 🎉 CONFETTI */
+            .confetti {{
+                position: fixed;
+                width: 8px;
+                height: 8px;
+                background: red;
+                animation: fall 4s linear forwards;
+            }}
+
+            @keyframes fall {{
+                0% {{ transform: translateY(-10px) rotate(0deg); }}
+                100% {{ transform: translateY(110vh) rotate(720deg); }}
             }}
         </style>
     </head>
@@ -161,6 +181,35 @@ def render_html_result(data: dict) -> str:
             {buttons}
             <div class="dev">Developer {data["dev"]}</div>
         </div>
+
+        <script>
+            function startDownload(url) {{
+                launchConfetti();
+
+                // Start download
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }}
+
+            function launchConfetti() {{
+                for (let i = 0; i < 80; i++) {{
+                    const confetti = document.createElement("div");
+                    confetti.className = "confetti";
+                    confetti.style.left = Math.random() * 100 + "vw";
+                    confetti.style.background =
+                        "hsl(" + Math.random() * 360 + ", 100%, 50%)";
+                    confetti.style.animationDuration =
+                        2 + Math.random() * 2 + "s";
+                    document.body.appendChild(confetti);
+
+                    setTimeout(() => confetti.remove(), 4000);
+                }}
+            }}
+        </script>
     </body>
     </html>
     """
