@@ -84,10 +84,10 @@ def home():
         <h1>HUNTER</h1>
 
         <div class="tagline">
-            Universal media extraction API.<br>
-            Download videos, audio, images — fast, clean, and platform-independent.
+            A developer specializing in bots, APIs, and automation.<br>
+            Focused on clean design, scalability, and practical execution..
             <br><br>
-            Built for developers, automation, and content tools.
+            For custom bots or API development, contact me.
         </div>
 
         <div class="dev">
